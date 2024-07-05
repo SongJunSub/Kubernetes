@@ -156,3 +156,73 @@
         - 권한 계정
     - Role/ClusterRole
         - 권한 설정 (Get, List, Watch, Create 등)
+
+**Kubernetes API 호출**
+
+- Object Spec - **YAML**
+- Pod의 YAML 예시
+    
+    ```yaml
+    apiVersion: v1
+    kind: Pod
+    metadata:
+    	name: example
+    spec:
+    	containers:
+    	- name: exampleContainer
+    		image: exampleContainer:1.25
+    ```
+    
+- ReplicaSet의 YAML 예시
+    
+    ```yaml
+    apiVersion: apps/v1
+    kind: ReplicaSet
+    metadata:
+    	name: backend
+    spec:
+    	replicas: 3
+    	selector:
+    		matchLabels:
+    			app: backend
+    	template:
+    		metadata:
+    			labels:
+    				app: backend
+    		spec:
+    			containers:
+    			- name: web
+    				image: image:v1
+    ```
+    
+- ArgoCD(Custom Resource)의 YAML 예시
+    
+    ```yaml
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+    	name: guestbook
+    	namespace: argocd
+    spec:
+    	project: default
+    	source:
+    		repoURL: https://github.com/argoproj/argocd-example-apps.git
+    		targetRevision: HEAD
+    		path: guestbook
+    	destination:
+    		server: https://kubernetes.default.svc
+    		namespace: guestbook
+    ```
+    
+- **Object Spec**
+    - apiVersion
+        - apps/v1, v1, batch/v1, networking.k8s.io/v1 등
+    - kind
+        - Pod, Deployment, Service, Ingress 등
+    - metadata
+        - name, label, namespace 등
+    - spec
+        - 각종 설정 (https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18)
+    - status (read-only)
+        - 시스템에서 관리하는 최신 상태
+- API 호출하기를 정리하자면, 원하는 상태(Desired State)를 다양한 오브젝트(Object)로 정의(Spec)하고 API 서버에 YAML 형식으로 전달한다.
