@@ -121,7 +121,7 @@
 - DNS (도메인, 서비스 디스커버리)
 - 대시보드 (시각화)
 
-**Kubernetes Object**
+**Kubernetes Objects**
 
 - **Pod**
     - Kubernetes는 컨테이너를 직접 관리하지 않고 Pod으로 감싸 관리를 한다. 컨테이너를 배포하는 것이 아닌 Pod을 배포하는 것이다.
