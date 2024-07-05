@@ -166,11 +166,11 @@
     apiVersion: v1
     kind: Pod
     metadata:
-    	name: example
+        name: example
     spec:
-    	containers:
-    	- name: exampleContainer
-    		image: exampleContainer:1.25
+        containers:
+        - name: exampleContainer
+            image: exampleContainer:1.25
     ```
     
 - ReplicaSet의 YAML 예시
@@ -179,20 +179,20 @@
     apiVersion: apps/v1
     kind: ReplicaSet
     metadata:
-    	name: backend
+        name: backend
     spec:
-    	replicas: 3
-    	selector:
-    		matchLabels:
-    			app: backend
-    	template:
-    		metadata:
-    			labels:
-    				app: backend
-    		spec:
-    			containers:
-    			- name: web
-    				image: image:v1
+        replicas: 3
+        selector:
+            matchLabels:
+                app: backend
+        template:
+            metadata:
+                labels:
+                    app: backend
+            spec:
+                containers:
+                - name: web
+                    image: image:v1
     ```
     
 - ArgoCD(Custom Resource)의 YAML 예시
