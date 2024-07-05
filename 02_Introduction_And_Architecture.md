@@ -120,3 +120,39 @@
 - CNI (네트워크)
 - DNS (도메인, 서비스 디스커버리)
 - 대시보드 (시각화)
+
+**Kubernetes Object**
+
+- **Pod**
+    - Kubernetes는 컨테이너를 직접 관리하지 않고 Pod으로 감싸 관리를 한다. 컨테이너를 배포하는 것이 아닌 Pod을 배포하는 것이다.
+    - Pod은 가장 작은 배포 단위이다.
+    - 각 Pod은 전체 클러스터에서 고유한 IP를 할당 받는다.
+    - 여러 개의 컨테이너가 하나의 Pod에 존재할 수 있다.
+- **ReplicaSet**
+    - 여러 개의 Pod을 관리한다. 몇 개의 Pod을 관리할 지를 결정하게 된다.
+- **Deployment**
+    - ReplicaSet을 감싸며 배포 버전을 관리하는 오브젝트이다.
+    - 무중단 배포를 진행할 때, Deployment의 version = 1 → version = 2로 배포될 때 ReplicaSet의 replicas = 3이라 가정하면 version = 1의 replicas = 1 / version = 2의 replicas = 1로 자동으로 분리 된다. 배포가 정상적으로 이루어졌을 때 version과 replicas가 변경되면서 자연스럽게 업데이트가 된다.
+- Service - **ClusterIP**
+    - 클러스터 내부에서 사용하는 프록시이다.
+    - Pod을 로드밸런스하는 별도의 서비스이다.
+    - 클러스터 내부에서 서비스 연결은 DNS를 이용한다.
+- Service - **NodePort**
+    - 노드(Host)에 노출되어 외부에서 접근 가능한 서비스이다.
+- Service - **LoadBalancer**
+    - 하나의 IP 주소를 외부에 노출해준다.
+- 즉, 사용자(Web Browser)는 Load Balancer로 요청을 보내고 그 요청이 다시 Node Port로 가고 그 Node Port가 다시 Cluster IP로 가고 그 Cluster IP가 다시 Pod으로 전달되는 구조이다.
+- **Ingress**
+    - 도메인 이름, 도메인 뒤에 붙는 경로별로 내부에 있는 Cluster IP 연결에 대해 라우팅을 해준다.
+        - Nginx, HAProxy, ALB 등
+- ETC
+    - Volume
+        - Storage (EBS, NFS 등)
+    - Namespace
+        - 논리적인 리소스 구분
+    - ConfigMap/Secret
+        - 설정
+    - ServiceAccount
+        - 권한 계정
+    - Role/ClusterRole
+        - 권한 설정 (Get, List, Watch, Create 등)
