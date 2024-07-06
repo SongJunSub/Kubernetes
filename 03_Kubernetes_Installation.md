@@ -121,3 +121,12 @@
         - `minikube ip`
     - 특정 k8s 버전 실행
         - `minikube start -—kubernetes-version=v1.30.0`
+     
+**kubectl**
+
+- kubectl은 쿠버네티스 CLI 도구이다. 쿠버네티스 클러스터에 명령어를 전달하는 가장 흔한 방법이다.
+- 명령어 (MacOS)
+    - 설치
+        - `brew install kubectl`
+    - 버전 확인
+        - `kubectl version`
