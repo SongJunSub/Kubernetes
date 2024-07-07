@@ -91,7 +91,7 @@
           labels:
             app: wordpress
         spec:
-        	replicas: 2
+            replicas: 2
           selector:
             matchLabels:
               app: wordpress
