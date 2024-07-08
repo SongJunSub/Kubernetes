@@ -7,3 +7,5 @@
 [3. 쿠버네티스 설치](03_Kubernetes_Installation.md)
 
 [4. 쿠버네티스 사용](04_Kubernetes_Use.md)
+
+[5. 쿠버네티스 사용 상세](05_Kubernetes_Usage_Details.md)
