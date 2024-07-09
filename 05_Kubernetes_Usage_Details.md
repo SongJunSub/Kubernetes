@@ -319,3 +319,71 @@
 **마무리**
 
 - Pod은 쿠버네티스에서 굉장히 중요한 요소이지만 단독으로 사용하는 경우는 거의 없다. Pod이 컨테이너를 관리하듯이 다른 컨트롤러가 Pod을 관리한다.
+
+**실습**
+
+- MongoDB Pod 생성
+    - 조건
+
+
+        | 키 | 값 |
+        | --- | --- |
+        | Pod 이름 | mongodb |
+        | Pod Label | app: mongo |
+        | Container 이름 | mongodb |
+        | Container 이미지 | mongo:4 |
+    - mongodb-pod.yml
+        
+        ```yaml
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: mongodb
+          labels:
+            app: mongo
+        spec:
+          containers:
+            - name: mongodb
+              image: mongo:4
+        ```
+        
+    - Pod 생성
+        
+        ```bash
+        kubectl apply -f mongodb-pod.yml
+        ```
+
+- MySQL Pod 생성
+    - 조건
+
+
+        | 키 | 값 |
+        | --- | --- |
+        | Pod 이름 | mysql |
+        | Pod Label | app: mysql |
+        | Container 이름 | mysql |
+        | Container 이미지 | mysql:latest |
+        | Container 환경변수 | MYSQL_ROOT_PASSWORD: 1234 |
+    - mysql-pod.yml
+        
+        ```yaml
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: mysql
+          labels:
+            app: mysql
+        spec:
+          containers:
+            - name: mysql
+              image: mysql:latest
+              env:
+                - name: MYSQL_ROOT_PASSWORD
+                  value: "1234"
+        ```
+        
+    - Pod 생성
+        
+        ```bash
+        kubectl apply -f mysql-pod.yml
+        ```
