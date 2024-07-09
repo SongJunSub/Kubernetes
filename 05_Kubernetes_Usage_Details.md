@@ -251,3 +251,71 @@
 
     - `3000`번 포트와 `/`경로는 정상적이기 때문에 Pod이 오류없이 생성된 것을 확인할 수 있다.
     - 서버가 살아있는지 체크하기 위해 주기적으로 Heath Check를 하게 된다. 어떤 내부적인 이유로 접속이 안 되면 차단을 끊거나 재시작을 하게 된다.
+
+**다중 컨테이너**
+
+- 대부분 `1 Pod = 1 컨테이너` 이지만 여러 개의 컨테이너를 가진 경우도 꽤 흔하다.
+- 하나의 Pod에 속한 컨테이너는 서로 네트워크를 localhost로 공유하고 동일한 디렉토리를 공유할 수 있다.
+- counter-pod-redis.yml
+
+    ```yaml
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: counter
+      labels:
+        app: counter
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/subicura/counter:latest
+          env:
+            - name: REDIS_HOST
+              value: "localhost"
+        - name: db
+          image: redis
+    ```
+
+    - 요청 횟수를 Redis에 저장하는 간단한 웹 애플리케이션을 다중 컨테이너로 생성한다.
+    - 환경변수(env) 설정
+        - env는 `name`과 `value`를 별도로 정의한다.
+- Pod 생성
+
+    ```bash
+    # Pod 생성
+    kubectl apply -f counter-pod-redis.yml
+    ```
+
+- 같은 Pod에 컨테이너가 생성되었기 때문에 counter 앱은 redis를 localhost로 접근할 수 있다.
+- 아직 Service를 배우지 않아 브라우저 테스트는 어려우니 직접 컨테이너에 접속하여 테스트를 진행해본다.
+
+    ```bash
+    # Pod 목록 조회
+    kubtctl get pod
+    
+    # Pod 로그 확인
+    kubectl logs counter # 오류 발생 (컨테이너 지정 필요)
+    kubectl logs counter app
+    kubectl logs counter db
+    
+    # Pod의 app 컨테이너 접속
+    kubectl exec -it counter -c app -- sh
+    # apk add curl busy-box-extras # install curl, telnet
+    # curl localhost:3000
+    # curl localhost:3000
+    # telnet localhost 6379
+    dbsize
+    KEYS *
+    GET count
+    quit
+    
+    # Pod 제거
+    kubectl delete -f counter-pod-redis.yml
+    ```
+
+- 멀티 컨테이너는 도커에선 볼 수 없던 개념이다. 쿠버네티스는 멀티 컨테이너를 이용한 다양한 패턴이 존재한다.
+- 로그를 수집하는 별도의 컨테이너를 같은 Pod으로 배포한다던가, 서버가 실행되기 전 데이터베이스를 마이그레이션 하는 초기화 컨테이너를 만들 수도 있다.
+
+**마무리**
+
+- Pod은 쿠버네티스에서 굉장히 중요한 요소이지만 단독으로 사용하는 경우는 거의 없다. Pod이 컨테이너를 관리하듯이 다른 컨트롤러가 Pod을 관리한다.
