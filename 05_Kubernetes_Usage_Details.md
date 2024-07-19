@@ -387,3 +387,120 @@
         ```bash
         kubectl apply -f mysql-pod.yml
         ```
+
+**ReplicaSet**
+
+- Pod을 단독으로 만들면 Pod에 어떤 문제(서버가 죽어서 Pod이 사라졌다던가)가 생겼을 때 자동으로 복구되지 않는다. 이러한 Pod을 정해진 수만큼 복제하고 관리하는 것이 ReplicaSet이다.
+
+**ReplicaSet 만들기**
+
+- echo-replicaset.yml
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: ReplicaSet
+    metadata:
+      name: echo-replicaset
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: echo
+          tier: app
+      template:
+        metadata:
+          labels:
+            app: echo
+            tier: app
+        spec:
+          containers:
+            - name: echo
+              image: ghcr.io/subicura/echo:v1
+    ```
+
+- ReplicaSet 생성 및 리소스 확인
+
+    ```bash
+    # ReplicaSet 생성
+    kubectl apply -f echo-replicaset.yml
+    
+    # 리소스 확인
+    kubectl get po,rs
+    ```
+
+- 실행 결과
+
+    ```bash
+    NAME                        READY   STATUS    RESTARTS   AGE
+    pod/echo-replicaset-cfbfp   1/1     Running   0          112s
+    
+    NAME                              DESIRED   CURRENT   READY   AGE
+    replicaset.apps/echo-replicaset   1         1         1       112s
+    ```
+
+- ReplicaSet은 label을 체크해서 원하는 수의 Pod이 없으면 새로운 Pod을 생성한다. 이를 설정으로 표현하면 다음과 같다.
+
+
+    | 정의 | 설명 |
+    | --- | --- |
+    | spec.selector | label 체크 조건 |
+    | spec.replicas  | 원하는 Pod의 개수 |
+    | spec.template  | 생성할 Pod의 명세 |
+- 생성된 Pod의 label을 확인
+
+    ```bash
+    kubectl get pod --show-labels
+    ```
+
+- 실행 결과
+
+    ```bash
+    NAME                    READY   STATUS    RESTARTS   AGE   LABELS
+    echo-replicaset-cfbfp   1/1     Running   0          9m    app=echo,tier=app
+    ```
+
+- 설정한대로 `app=echo,tier=app` label이 보인다. 임의로 label을 제거하면 어떻게 되는지 확인해보자.
+
+    ```bash
+    # app- 를 지정하면 app label을 제거
+    kubectl label pod/echo-replicaset-cfbfp app-
+    
+    # 다시 Pod 확인
+    kubectl get pod --show-labels
+    ```
+
+- 실행 결과
+
+    ```bash
+    NAME                    READY   STATUS    RESTARTS   AGE   LABELS
+    echo-replicaset-cfbfp   1/1     Running   0          13m   tier=app
+    echo-replicaset-wwzf5   1/1     Running   0          7s    app=echo,tier=app
+    ```
+
+- 다시 label 추가
+
+    ```bash
+    # app=echo를 지정하여 app label 추가
+    kubectl label pod/echo-replicaset-cfbfp app=echo
+    
+    # 다시 Pod 확인
+    kubectl get pod --show-labels
+    ```
+
+- 실행 결과
+
+    ```bash
+    NAME                    READY   STATUS    RESTARTS   AGE   LABELS
+    echo-replicaset-cfbfp   1/1     Running   0          16m   app=echo,tier=app
+    ```
+
+
+**ReplicaSet의 흐름**
+
+- `ReplicaSet Controller`는 ReplicaSet 조건을 감시하면서 현재 상태와 원하는 상태가 다른 것을 체크한다.
+- `ReplicaSet Controller`가 원하는 상태가 되도록 `Pod`을 생성하거나 제거한다.
+- `Scheduler`는 API Server를 감시하면서 할당되지 않은 `Pod`이 있는지 체크한다.
+- `Scheduler`는 할당되지 않은 새로운 `Pod`을 감지하고 적절한 `Node`에 배치한다.
+- 이후 `Node`는 기존대로 동작한다.
+- 정리
+  - ReplicaSet은 `ReplicaSet Controller`가 관리하고 `Pod`의 할당은 여전히 `Scheduler`가 관리한다.
