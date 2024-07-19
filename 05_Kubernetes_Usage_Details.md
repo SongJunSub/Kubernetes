@@ -504,3 +504,93 @@
 - 이후 `Node`는 기존대로 동작한다.
 - 정리
   - ReplicaSet은 `ReplicaSet Controller`가 관리하고 `Pod`의 할당은 여전히 `Scheduler`가 관리한다.
+
+**스케일 아웃**
+
+- ReplicaSet을 이용하면 손쉽게 Pod을 여러 개로 복제할 수 있다.
+- echo-replicaset-scaled.yml
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: ReplicaSet
+    metadata:
+      name: echo-replicaset
+    spec:
+      replicas: 4
+      selector:
+        matchLabels:
+          app: echo
+          tier: app
+      template:
+        metadata:
+          labels:
+            app: echo
+            tier: app
+        spec:
+          containers:
+            - name: echo
+              image: ghcr.io/subicura/echo:v1
+    ```
+
+- ReplicaSet 생성 및 리소스 확인
+
+    ```bash
+    # ReplicaSet 생성
+    kubectl apply -f echo-replicaset-scaled.yml
+    
+    # 리소스 확인
+    kubectl get po,rs
+    ```
+
+
+**마무리**
+
+- ReplicaSet은 원하는 개수의 Pod을 유지하는 역할을 담당한다. label을 이용하여 Pod을 체크하기 때문에 label이 겹치치 않게 신경써서 정의해야 한다.
+- 실무에서 ReplicaSet을 단독으로 쓰는 경우는 거의 없다. Deployment가 ReplicaSet을 이용하고 주로 Deployment를 사용한다.
+
+**실습**
+
+- 다음 조건을 만족하는 ReplicaSet을 만들자.
+
+
+    | 키 | 값 |
+    | --- | --- |
+    | ReplicaSet 이름 | nginx |
+    | ReplicaSet selector | app: nginx |
+    | ReplicaSet 복제 수 | 3 |
+    | Container 이름 | nginx |
+    | Container 이미지 | nginx:latest |
+- nginx-replicaset.yml
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: ReplicaSet
+    metadata:
+      name: nginx
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          app: nginx
+      template:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:latest
+    ```
+
+- ReplicaSet 생성 및 리소스 확인
+
+    ```bash
+    # ReplicaSet 생성
+    kubectl apply -f nginx-replicaset.yml
+    
+    # 리소스 확인
+    kubectl get po,rs
+    
+    # ReplicaSet 제거
+    kubectl delete -f nginx-replicaset.yml
+    ```
