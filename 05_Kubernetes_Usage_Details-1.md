@@ -725,3 +725,181 @@
 - `Scheduler`는 API Server를 감시하면서 할당되지 않은 Pod이 있는지 체크한다.
 - `Scheduler`는 할당되지 않은 새로운 `Pod`을 감지하고 적절한 `Node`에 배치한다.
 - 이후 `Node`는 기존대로 동작한다.
+
+**버전 관리**
+
+- Deployment는 변경된 상태를 기록한다.
+
+    ```bash
+    # 히스토리 확인
+    kubectl rollout history deploy/echo-deploy
+    
+    # revision 1 히스토리 상세 확인
+    kubectl rollout history deploy/echo-deploy --revision=1
+    
+    # 바로 전으로 롤백
+    kubectl rollout undo deploy/echo-deploy
+    
+    # 특정 버전으로 롤백
+    kubectl rollout undo deploy/echo-deploy --to-revision=2
+    
+    # 리소스 확인
+    kubectl get all
+    ```
+
+
+**배포 전략 설정**
+
+- Deployment는 다양한 방식의 배포 전략이 있다. 여기서는 롤링업데이트(RollingUpdate) 방식을 사용할 때 동시에 업데이트하는 Pod의 개수를 변경해본다.
+- echo-deployment-rollingupdate.yml
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: echo-deploy
+    spec:
+      replicas: 4
+      minReadySeconds: 5
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 3
+          maxUnavailable: 3
+      selector:
+        matchLabels:
+          app: echo
+          tier: app
+      template:
+        metadata:
+          labels:
+            app: echo
+            tier: app
+        spec:
+          containers:
+            - name: echo
+              image: ghcr.io/subicura/echo:v1
+    ```
+
+  - maxSurge와 maxUnavailable의 기본값은 25%이다. 대부분의 상황에서 적당하지만 상황에 따라 적절하게 조정이 필요하다.
+- Deployment 생성
+
+    ```bash
+    # Deployment 생성
+    kubectl apply -f echo-deployment-rollingupdate.yml
+    
+    # 리소스 확인
+    kubectl get all
+    
+    # Deployment 상세 확인
+    kubectl describe deploy/echo-deploy
+    
+    # 실행 결과
+    Events:
+      Type    Reason             Age                  From                   Message
+      ----    ------             ----                 ----                   -------
+      Normal  ScalingReplicaSet  51m                  deployment-controller  Scaled up replica set echo-deploy-5f9566c4d9 to 4
+      Normal  ScalingReplicaSet  45m                  deployment-controller  Scaled up replica set echo-deploy-54c84dd47b to 1
+      Normal  ScalingReplicaSet  45m                  deployment-controller  Scaled down replica set echo-deploy-5f9566c4d9 to 3 from 4
+      Normal  ScalingReplicaSet  45m                  deployment-controller  Scaled up replica set echo-deploy-54c84dd47b to 2 from 1
+      Normal  ScalingReplicaSet  45m                  deployment-controller  Scaled down replica set echo-deploy-5f9566c4d9 to 2 from 3
+      Normal  ScalingReplicaSet  45m                  deployment-controller  Scaled up replica set echo-deploy-54c84dd47b to 3 from 2
+      Normal  ScalingReplicaSet  45m                  deployment-controller  Scaled down replica set echo-deploy-5f9566c4d9 to 1 from 2
+      Normal  ScalingReplicaSet  45m                  deployment-controller  Scaled up replica set echo-deploy-54c84dd47b to 4 from 3
+      Normal  ScalingReplicaSet  45m                  deployment-controller  Scaled down replica set echo-deploy-5f9566c4d9 to 0 from 1
+      Normal  ScalingReplicaSet  20m                  deployment-controller  Scaled down replica set echo-deploy-54c84dd47b to 3 from 4
+      Normal  ScalingReplicaSet  20m                  deployment-controller  Scaled up replica set echo-deploy-5f9566c4d9 to 1 from 0
+      Normal  ScalingReplicaSet  20m                  deployment-controller  Scaled up replica set echo-deploy-5f9566c4d9 to 2 from 1
+      Normal  ScalingReplicaSet  20m                  deployment-controller  Scaled down replica set echo-deploy-54c84dd47b to 2 from 3
+      Normal  ScalingReplicaSet  20m                  deployment-controller  Scaled up replica set echo-deploy-5f9566c4d9 to 3 from 2
+      Normal  ScalingReplicaSet  20m                  deployment-controller  Scaled down replica set echo-deploy-54c84dd47b to 1 from 2
+      Normal  ScalingReplicaSet  16m                  deployment-controller  Scaled up replica set echo-deploy-54c84dd47b to 1 from 0
+      Normal  ScalingReplicaSet  16m (x7 over 16m)    deployment-controller  (combined from similar events): Scaled down replica set echo-deploy-5f9566c4d9 to 0 from 1
+      Normal  ScalingReplicaSet  2m26s (x2 over 20m)  deployment-controller  Scaled up replica set echo-deploy-5f9566c4d9 to 4 from 3
+      Normal  ScalingReplicaSet  2m26s                deployment-controller  Scaled up replica set echo-deploy-5f9566c4d9 to 3 from 0
+      Normal  ScalingReplicaSet  2m26s                deployment-controller  Scaled down replica set echo-deploy-54c84dd47b to 1 from 4
+      Normal  ScalingReplicaSet  2m19s (x2 over 20m)  deployment-controller  Scaled down replica set echo-deploy-54c84dd47b to 0 from 1
+    ```
+
+  - Pod을 하나씩 생성하지 않고 한 번에 3개가 생성된 것을 확인할 수 있다.
+- Deployment는 가장 흔하게 사용하는 배포 방식이다. 이외에 StatefulSet, DaemonSet, CronJob, Job 등이 있지만 사용법은 크게 다르지 않다.
+
+**실습**
+
+- #1 다음 조건을 만족하는 Deployment를 만들자.
+
+
+    | 키 | 값 |
+    | --- | --- |
+    | Deployment 이름 | nginx |
+    | Deployment Label | app: nginx |
+    | Deployment 복제 수 | 3 |
+    | Container 이름 | nginx |
+    | Container 이미지 | nginx:1.14.2 |
+- nginx-deployment.yml
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: nginx
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          app: nginx
+      template:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.14.2
+    ```
+
+- #2 복제 개수를 5로 조정하자.
+- nginx-deployment.yml
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: nginx
+    spec:
+      replicas: 5
+      selector:
+        matchLabels:
+          app: nginx
+      template:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.14.2
+    ```
+
+- #3 이미지를 nginx:1.19.5로 변경하자.
+- nginx-deployment.yml
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: nginx
+    spec:
+      replicas: 5
+      selector:
+        matchLabels:
+          app: nginx
+      template:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.19.5
+    ```
