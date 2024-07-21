@@ -1025,3 +1025,76 @@
     ```
 
 - Service를 통해 Pod과 성공적으로 연결된 것을 확인할 수 있다.
+
+**Service 생성 흐름**
+
+- Service는 각 Pod을 바라보는 로드밸런서 역할을 하면서 내부 도메인 서버에 새로운 도메인을 생성한다. Service가 어떻게 동작하는지 살펴보자.
+- `Endpoint Controller`는 `Service`와 `Pod`을 감시하면서 조건에 맞는 Pod의 IP를 수집한다.
+- `Endpoint Controller`가 수집한 IP를 가지고 `Endpoint`를 생성한다.
+- `Kube-Proxy`는 `Endpoint` 변화를 감시하고 노드의 `iptables`를 설정한다.
+- `CoreDNS`는 `Service`를 감시하고 서비스 이름과 IP를 `CoreDNS`에 추가한다.
+- `iptables`는 커널 레벨의 네트워크 도구이고 `CoreDNS`는 빠르고 편리하게 사용할 수 있는 클러스터 내부용 도메인 네임 서버이다. 각각의 역할은 `iptables` 설정으로 여러 IP에 트래픽을 전달하고 `CoreDNS`를 이용하여 IP 대신 도메인 이름을 사용한다.
+- iptables는 규칙이 많아지면 성능이 느려지는 이슈가 있어, `ipvs`를 사용하는 옵션도 있다.
+- CoreDNS는 클러스터에서 호환성을 위해 `kube-dns`라는 이름으로 생성된다.
+- Endpoint는 서비스의 접속 정보를 가지고 있다. Endpoint 상태를 확인해보자.
+
+    ```bash
+    # Endpoint 확인
+    kubectl get endpoints
+    kubectl get ep # 줄여서
+    
+    # redis Endpoint 상세 정보 확인
+    kubectl describe ep/redis
+    
+    # Pod의 IP 확인
+    kubectl get po -o wide
+    ```
+
+
+**Service(NodePort) 만들기**
+
+- ClusterIP는 클러스터 내부에서만 접근할 수 있다. 클러스터 외부(노드)에서 접근할 수 있도록 NodePort 서비스를 만들어보자.
+- counter-nodeport.yml
+
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: counter-np
+    spec:
+      type: NodePort
+      ports:
+        - port: 3000
+          protocol: TCP
+          nodePort: 31000
+      selector:
+        app: counter
+        tier: app
+    ```
+
+- NodePort 서비스의 설정
+
+
+    | 정의 | 설명 |
+    | --- | --- |
+    | spec.ports.nodePort | 노드에 오픈할 Port (미지정 시 30000-32768 중에 자동 할당) |
+- Service 생성
+
+    ```bash
+    # Service 생성
+    kubectl apply -f counter-nodeport.yml
+    
+    # Service 확인
+    kubectl get svc
+    
+    # minikube ip 확인
+    minikube ip # 192.168.49.2
+    
+    # counter-np Service 터널링 활성화
+    minikube service counter-np
+    
+    # 브라우저에서 192.168.49.2:31000으로 접속되는지 확인
+    ```
+
+- NodePort는 클러스터의 모든 노드에 포트를 오픈한다. 지금은 테스트라서 하나의 노드밖에 없지만 여러 개의 노드가 있다면 아무 노드로 접근해도 지정한 Pod으로 접근할 수 있다.
+- NodePort는 ClusterIP의 기능을 기본으로 포함한다.
