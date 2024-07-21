@@ -903,3 +903,125 @@
             - name: nginx
               image: nginx:1.19.5
     ```
+
+**Service**
+
+- Pod은 자체 IP를 가지고 다른 Pod과 통신할 수 있지만, 쉽게 사라지고 생성되는 특징 때문에 직접 통신하는 방법은 권장하지 않는다. 쿠버네티스는 Pod과 직접 통신하는 방법 대신, 별도의 고정 IP를 가진 서비스를 만들고, 그 서비스를 통해 Pod에 접근하는 방식을 사용한다.
+
+**Service(ClusterIP) 만들기**
+
+- ClusterIP는 클러스터 내부에 새로운 IP를 할당하고 여러 개의 Pod을 바라보는 로드밸런서 기능을 제공한다. 그리고 서비스 이름을 내부 도메인 서버에 등록하여 Pod 간에 서비스 이름으로 통신할 수 있다.
+- counter 앱 중에 redis를 서비스로 노출해보도록 하자.
+- counter-redis-service.yml
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: redis
+    spec:
+      selector:
+        matchLabels:
+          app: counter
+          tier: db
+      template:
+        metadata:
+          labels:
+            app: counter
+            tier: db
+        spec:
+          containers:
+            - name: redis
+              image: redis
+              ports:
+                - containerPort: 6379
+                  protocol: TCP
+    
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: redis
+    spec:
+      ports:
+        - port: 6379
+          protocol: TCP
+      selector:
+        app: counter
+        tier: db
+    ```
+
+- 하나의 YAML 파일에 여러 개의 리소스를 정의할 땐 “—-”를 구분자로 사용한다.
+- Service 생성
+
+    ```bash
+    # Service 생성
+    kubectl apply -f counter-redis-service.yml
+    
+    # 리소스 확인
+    kubectl get all
+    ```
+
+- 같은 클러스터에서 생성된 Pod이라면 `redis`라는 도메인으로 redis Pod에 접근할 수 있다. (`redis.default.svc.cluster.local` 로도 접근이 가능하다. 서로 다른 namespace와 cluster를 구분할 수 있다.)
+- ClusterIP 서비스의 설정
+
+
+    | 정의 | 설명 |
+    | --- | --- |
+    | spec.ports.port | 서비스가 생성할 Port |
+    | spec.ports.targetPort | 서비스가 접근할 Pod의 Port (기본: port랑 동일) |
+    | spec.selector | 서비스가 접근할 Pod의 label 조건 |
+- redis Service의 selector는 redis Deployment에 정의한 label을 사용했기 때문에 해당 Pod을 가리킨다. 그리고 해당 Pod의 6379 포트로 연결하였다.
+- 이제 redis에 접근할 counter 앱을 Deployment로 만들자.
+- counter-app.yml
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: counter
+    spec:
+      selector:
+        matchLabels:
+          app: counter
+          tier: app
+      template:
+        metadata:
+          labels:
+            app: counter
+            tier: app
+        spec:
+          containers:
+            - name: counter
+              image: ghcr.io/subicura/counter:latest
+              env:
+                - name: REDIS_HOST
+                  value: "redis"
+                - name: REDIS_PORT
+                  value: "6379"
+    ```
+
+- Service 생성
+
+    ```bash
+    # Service 생성
+    kubectl apply -f counter-app.yml
+    
+    # 리소스 확인
+    kubectl get all
+    
+    # 정상 작동 테스트
+    kubectl exec -it counter-59b58897d6-zg4pj -- sh
+    
+    # curl 및 telnet 설치 후 테스트
+    apk add curl busybox-extras # install telnet
+    curl localhost:3000
+    curl localhost:3000
+    telnet redis 6379
+    dbsize
+    KEYS *
+    GET count
+    quit
+    ```
+
+- Service를 통해 Pod과 성공적으로 연결된 것을 확인할 수 있다.
