@@ -8,4 +8,4 @@
 
 [4. 쿠버네티스 사용](04_Kubernetes_Use.md)
 
-[5. 쿠버네티스 사용 상세](05_Kubernetes_Usage_Details.md)
+[5. 쿠버네티스 사용 상세](05_Kubernetes_Usage_Details-1)

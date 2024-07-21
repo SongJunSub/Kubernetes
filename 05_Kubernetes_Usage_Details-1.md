@@ -594,3 +594,134 @@
     # ReplicaSet 제거
     kubectl delete -f nginx-replicaset.yml
     ```
+
+**Deployment**
+
+- Deployment는 쿠버네티스에서 가장 널리 사용되는 오브젝트이다. ReplicaSet을 이용하여 Pod을 업데이트하고 이력을 관리하여 롤백하거나 특정 버전으로 돌아갈 수 있다.
+
+**Deployment 만들기**
+
+- echo-deployment.yml
+
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: echo-deploy
+    spec:
+      replicas: 4
+      selector:
+        matchLabels:
+          app: echo
+          tier: app
+      template:
+        metadata:
+          labels:
+            app: echo
+            tier: app
+        spec:
+          containers:
+            - name: echo
+              image: ghcr.io/subicura/echo:v1
+    ```
+
+- Deployment 생성
+
+    ```bash
+    # Deployment 생성
+    kubectl apply -f echo-deployment.yml
+    
+    # 상태 확인
+    kubectl get all
+    ```
+
+- 이미지 버전 변경
+  - echo-deployment-v2.yml
+
+      ```yaml
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: echo-deploy
+      spec:
+        replicas: 4
+        selector:
+          matchLabels:
+            app: echo
+            tier: app
+        template:
+          metadata:
+            labels:
+              app: echo
+              tier: app
+          spec:
+            containers:
+              - name: echo
+                image: ghcr.io/subicura/echo:v2
+      ```
+
+- 변경된 버전 이미지 생성
+
+    ```bash
+    # 새로운 이미지 업데이트
+    kubectl apply -f echo-deployment-v2.yml
+    
+    # 리소스 확인
+    kubectl get all
+    
+    # 실행 결과
+    NAME                               READY   STATUS    RESTARTS   AGE
+    pod/echo-deploy-54c84dd47b-5cgjz   1/1     Running   0          8s
+    pod/echo-deploy-54c84dd47b-5pxk4   1/1     Running   0          3s
+    pod/echo-deploy-54c84dd47b-fzblz   1/1     Running   0          8s
+    pod/echo-deploy-54c84dd47b-n5q5l   1/1     Running   0          4s
+    
+    NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+    service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   15d
+    
+    NAME                          READY   UP-TO-DATE   AVAILABLE   AGE
+    deployment.apps/echo-deploy   4/4     4            4           5m53s
+    
+    NAME                                     DESIRED   CURRENT   READY   AGE
+    replicaset.apps/echo-deploy-54c84dd47b   4         4         4       8s
+    replicaset.apps/echo-deploy-5f9566c4d9   0         0         0       5m53s
+    ```
+
+- Deployment는 새로운 이미지로 업데이트하기 위해 ReplicaSet을 이용한다. 버전을 업데이트하면 새로운 ReplicaSet을 생성하고 해당 ReplicaSet이 새로운 버전의 Pod을 생성한다.
+- 엄밀히 말하면 “Pod을 새로운 버전으로 업데이트한다.”는 잘못된 표현이고, “새로운 버전의 Pod을 생성하고 기존 Pod을 제거한다.”가 정확한 표현이다.
+- 흐름
+  - 새로운 ReplicaSet을 0 → 1개로 조정하고 정상적으로 Pod이 동작하면 기존 ReplicaSet을 4 → 3개로 조정한다.
+  - 새로운 ReplicaSet을 1 → 2개로 조정하고 정상적으로 Pod이 동작하면 기존 ReplicaSet을 3 → 2개로 조정한다.
+  - 새로운 ReplicaSet을 2 → 3개로 조정하고 정상적으로 Pod이 동작하면 기존 ReplicaSet을 2 → 1개로 조정한다.
+  - 최종적으로 새로운 ReplicaSet을 4개로 조정하고 정상적으로 Pod이 동작하면 기존 ReplicaSet을 0개로 조정하면 업데이트가 완료된다.
+- 생성한 Deployment의 상세 상태를 보면 더 자세히 알 수 있다.
+
+    ```bash
+    # Deployment 상세 상태 확인
+    kubectl describe deploy/echo-deploy
+    
+    # 실행 결과
+    Events:
+      Type    Reason             Age    From                   Message
+      ----    ------             ----   ----                   -------
+      Normal  ScalingReplicaSet  12m    deployment-controller  Scaled up replica set echo-deploy-5f9566c4d9 to 4
+      Normal  ScalingReplicaSet  6m30s  deployment-controller  Scaled up replica set echo-deploy-54c84dd47b to 1
+      Normal  ScalingReplicaSet  6m30s  deployment-controller  Scaled down replica set echo-deploy-5f9566c4d9 to 3 from 4
+      Normal  ScalingReplicaSet  6m30s  deployment-controller  Scaled up replica set echo-deploy-54c84dd47b to 2 from 1
+      Normal  ScalingReplicaSet  6m26s  deployment-controller  Scaled down replica set echo-deploy-5f9566c4d9 to 2 from 3
+      Normal  ScalingReplicaSet  6m26s  deployment-controller  Scaled up replica set echo-deploy-54c84dd47b to 3 from 2
+      Normal  ScalingReplicaSet  6m25s  deployment-controller  Scaled down replica set echo-deploy-5f9566c4d9 to 1 from 2
+      Normal  ScalingReplicaSet  6m25s  deployment-controller  Scaled up replica set echo-deploy-54c84dd47b to 4 from 3
+      Normal  ScalingReplicaSet  6m25s  deployment-controller  Scaled down replica set echo-deploy-5f9566c4d9 to 0 from 1
+    ```
+
+
+**Deployment Controller의 동작 흐름**
+
+- `Deployment Controller`는 Deployment 조건을 감시하면서 현재 상태와 원하는 상태가 다른 것을 체크한다.
+- `Deployment Controller`가 원하는 상태가 되도록 `ReplicaSet`을 설정한다.
+- `ReplicaSet Controller`는 ReplicaSet 조건을 감시하면서 현재 상태와 원하는 상태가 다른 것을 체크한다.
+- `ReplicaSet Controller`가 원하는 상태가 되도록 `Pod`을 생성하거나 제거한다.
+- `Scheduler`는 API Server를 감시하면서 할당되지 않은 Pod이 있는지 체크한다.
+- `Scheduler`는 할당되지 않은 새로운 `Pod`을 감지하고 적절한 `Node`에 배치한다.
+- 이후 `Node`는 기존대로 동작한다.
