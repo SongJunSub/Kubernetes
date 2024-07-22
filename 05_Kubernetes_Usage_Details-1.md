@@ -1098,3 +1098,86 @@
 
 - NodePort는 클러스터의 모든 노드에 포트를 오픈한다. 지금은 테스트라서 하나의 노드밖에 없지만 여러 개의 노드가 있다면 아무 노드로 접근해도 지정한 Pod으로 접근할 수 있다.
 - NodePort는 ClusterIP의 기능을 기본으로 포함한다.
+
+**Service(LoadBalancer) 만들기**
+
+- NodePort의 단점은 노드가 사라졌을 때 자동으로 다른 노드를 통해 접근이 불가능하다는 점이다. 예를 들어, 3개의 노드가 있다면 3개 중에 아무 노드로 접근해도 NodePort로 연결할 수 있지만 어떤 노드가 살아 있는지는 알 수 없다.
+- 자동으로 살아있는 노드에 접근하기 위해 모든 노드를 바라보는 `Load Balancer`가 필요하다. 브라우저는 NodePort에 직접 요청을 보내는 것이 아니라 Load Balancer에 요청하고 Load Balancer가 알아서 살아 있는 노드에 접근하면 NodePort의 단점을 없앨 수 있다.
+- counter-loadbalancer.yml
+
+    ```yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: counter-lb
+    spec:
+      type: LoadBalancer
+      ports:
+        - port: 30000
+          targetPort: 3000
+          protocol: TCP
+      selector:
+        app: counter
+        tier: app
+    ```
+
+- Load Balancer 생성
+
+    ```bash
+    # Load Balancer 생성
+    kubectl apply -f counter-loadbalancer.yml
+    
+    # 리소스 확인
+    kubectl get svc
+    
+    # 실행 결과
+    NAME         TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)           AGE
+    counter-lb   LoadBalancer   10.100.78.72   <pending>     30000:31798/TCP   82s
+    kubernetes   ClusterIP      10.96.0.1      <none>        443/TCP           15d
+    ```
+
+- counter-lb가 생성되었지만, `EXTERNAL-IP`가 `<pending>`인 것을 확인할 수 있다. 사실 Load Balancer는 AWS, Google Cloud, Azure 같은 클라우드 환경이 아니면 사용이 제한적이다. 특정 서버(노드)를 가리키는 무언가(Load Balancer)가 필요한데 이런 무언가가 가상 머신이나 로컬 서버에는 존재하지 않는다.
+
+**minikube에 가상 LoadBalancer 만들기**
+
+- Load Balancer를 사용할 수 없는 환경에서 가상 환경을 만들어 주는 것이 `MetalLB`라는 것이다. minikube에서는 현재 떠 있는 노드를 Load Balancer로 설정한다. minikube의 `addons` 명령어로 활성화한다.
+
+    ```bash
+    # MetalLB 활성화
+    minikube addons enable metallb
+    ```
+
+- metallb-configmap.yml
+
+    ```yaml
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      namespace: metallb-system
+      name: config
+    data:
+      config: |
+        address-pools:
+        - name: default
+          protocol: layer2
+          addresses:
+          - 192.168.49.2/32 # minikube ip
+    ```
+
+- ConfigMap 생성
+
+    ```bash
+    # ConfigMap 생성
+    kubectl apply -f metallb-configmap.yml
+    
+    # 리소스 확인
+    kubectl get svc
+    
+    # 실행 결과
+    NAME         TYPE           CLUSTER-IP     EXTERNAL-IP    PORT(S)           AGE
+    counter-lb   LoadBalancer   10.100.78.72   192.168.49.2   30000:31798/TCP   12m
+    kubernetes   ClusterIP      10.96.0.1      <none>         443/TCP           15d
+    ```
+
+- Docker Driver를 사용 중이라면 `minikube service counter-lb` 명령어를 이용하여 접속해야 한다.
+- LoadBalancer는 NodePort의 기능을 기본으로 포함한다.
