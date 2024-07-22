@@ -9,3 +9,5 @@
 [4. 쿠버네티스 사용](04_Kubernetes_Use.md)
 
 [5. 쿠버네티스 사용 상세 - 1](05_Kubernetes_Usage_Details-1.md)
+
+[6. 쿠버네티스 사용 상세 - 2](06_Kubernetes_Usage_Details-2.md)
