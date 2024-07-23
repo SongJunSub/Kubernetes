@@ -44,3 +44,37 @@ spec:
       protocol: TCP
   selector:
     service: vote
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result
+spec:
+  selector:
+    matchLabels:
+      service: result
+  template:
+    metadata:
+      labels:
+        service: result
+    spec:
+      containers:
+        - name: result
+          image: ghcr.io/subicura/voting/result
+          env:
+            - name: POSTGRES_HOST
+              value: "db"
+            - name: POSTGRES_PORT
+              value: "5432"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+          ports:
+            - containerPort: 80
+              protocol: TCP
