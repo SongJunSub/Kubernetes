@@ -92,3 +92,30 @@ spec:
       protocol: TCP
   selector:
     service: result
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  selector:
+    matchLabels:
+      service: worker
+  template:
+    metadata:
+      labels:
+        service: worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/subicura/voting/worker
+          env:
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: POSTGRES_HOST
+              value: "db"
+            - name: POSTGRES_PORT
+              value: "5432"
