@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote
+spec:
+  selector:
+    matchLabels:
+      service: vote
+  template:
+    metadata:
+      labels:
+        service: vote
+    spec:
+      containers:
+        - name: vote
+          image: ghcr.io/subicura/voting/vote
+          env:
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+          ports:
+            - containerPort: 80
+              protocol: TCP
