@@ -390,3 +390,62 @@
     # 리소스 확인
     kubectl get all
     ```
+
+**Ingress**
+
+- `Ingress`는 여러 도메인을 각각에 맞는 서비스에 분기 시켜준다. 예를 들어, `example.com`, `subicura.com/blog`, `subicura.com/help` 라는 도메인이 있을 때 각각의 주소로 서로 다른 서비스에 접근할 수 있다. `80(http)` 또는 `443(https)` 포트로 여러 개의 서비스를 연결해야 하는데 이럴 때 `Ingress`를 사용한다.
+
+**Ingress 만들기**
+
+- echo 웹 애플리케이션을 버전별로 도메인을 다르게 만들어 보자.
+- `minikube ip`로 테스트 클러스터의 노드 IP를 구하고 도메인 주소로 사용한다. 결과 IP는 `192.168.49.2`이며, 사용할 도메인은 다음과 같다.
+  - v1.echo.192.168.49.2.sslip.io
+  - v2.echo.192.168.49.2.sslip.io
+- 도메인을 테스트하려면 여러가지 설정이 필요하다. 여기서는 별도의 설정없이 IP 주소를 도메인에 넣어 바로 사용할 수 있는 [sslip.io](http://sslip.io) 서비스를 이용하도록 한다.
+
+**minikube에 Ingress 활성화하기**
+
+- Ingress는 Pod, ReplicaSet, Deployment, Service와 달리 별도의 컨트롤러를 설치해야 한다. 여러가지 컨트롤러 중에 입맛에 맞게 고를 수 있는데 여기서는 nginx ingress controller를 사용한다.
+- Ingress Controller
+  - nginx를 제외한 대표적인 컨트롤러로 haproxy, traefik, alb 등이 있다.
+- 명령어
+
+    ```bash
+    # Ingress 활성화
+    minikube addons enable ingress
+    
+    # 설치된 Namespace 확인
+    kubectl get pod -A
+    
+    # Ingress 컨트롤러 확인
+    kubectl -n ingress-nginx get pod
+    
+    # 실행 결과
+    NAME                                        READY   STATUS      RESTARTS   AGE
+    ingress-nginx-admission-create-7x72c        0/1     Completed   0          2m42s
+    ingress-nginx-admission-patch-m25g6         0/1     Completed   1          2m42s
+    ingress-nginx-controller-768f948f8f-sbzgt   1/1     Running     0          2m42s
+    ```
+
+- Docker Driver를 사용 중이라면 `minikube service ingress-nginx-controller -n ingress-nginx -—url` 명령어를 이용하여 접속 주소를 확인한다.
+- 실행 결과
+
+    ```bash
+    # 접속 주소 확인
+    minikube service ingress-nginx-controller -n ingress-nginx --url
+    
+    # 실행 결과 (첫번째 주소 사용)
+    http://127.0.0.1:49732
+    http://127.0.0.1:49733
+    ❗  darwin 에서 Docker 드라이버를 사용하고 있기 때문에, 터미널을 열어야 실행할 수 있습니다
+    
+    # 테스트 주소 접속
+    curl -I http://127.0.0.1:49732/healthz
+    
+    # 실행 결과
+    HTTP/1.1 200 OK
+    Date: Tue, 23 Jul 2024 14:23:59 GMT
+    Content-Type: text/html
+    Content-Length: 0
+    Connection: keep-alive
+    ```
